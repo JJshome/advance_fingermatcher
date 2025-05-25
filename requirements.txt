@@ -1,43 +1,60 @@
-# Core dependencies
-numpy>=1.20.0
-opencv-python>=4.5.0
-scipy>=1.7.0
-scikit-image>=0.18.0
-Pillow>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+torch-geometric>=2.3.0
+torch-scatter>=2.1.0
 
-# Scientific computing
-scikit-learn>=1.0.0
-pandas>=1.3.0
+# Deep Learning and Computer Vision
+opencv-python>=4.8.0
+scikit-image>=0.21.0
+Pillow>=10.0.0
 
-# Visualization (optional)
-matplotlib>=3.3.0
-seaborn>=0.11.0
+# Scientific Computing
+numpy>=1.24.0
+scipy>=1.11.0
+scikit-learn>=1.3.0
 
-# Testing
-pytest>=6.0.0
-pytest-cov>=2.0.0
+# High-Performance Search
+faiss-cpu>=1.7.4
+faiss-gpu>=1.7.4  # Optional: for GPU acceleration
 
-# Development tools
-black>=21.0.0
-flake8>=3.8.0
-mypy>=0.800
+# Data Handling and Storage
+pandas>=2.0.0
+h5py>=3.9.0
+redis>=4.6.0  # Optional: for distributed caching
 
-# Documentation
-sphinx>=4.0.0
-sphinx-rtd-theme>=1.0.0
+# Visualization and Plotting
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.15.0
 
-# Progress bars and utilities
-tqdm>=4.60.0
-click>=8.0.0
+# Testing and Quality
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
 
-# Configuration management
-pyyaml>=5.4.0
-configparser>=5.0.0
+# Performance and Optimization
+numba>=0.57.0
+joblib>=1.3.0
 
-# Logging
-coloredlogs>=15.0
+# Configuration and Utilities
+pyyaml>=6.0
+tqdm>=4.65.0
+psutil>=5.9.0
 
-# Optional: Deep learning frameworks (commented out by default)
-# tensorflow>=2.8.0
-# torch>=1.10.0
-# torchvision>=0.11.0
+# Optional Dependencies for Advanced Features
+# Uncomment if needed:
+
+# For distributed computing
+# ray>=2.6.0
+# dask>=2023.8.0
+
+# For model serving
+# fastapi>=0.100.0
+# uvicorn>=0.23.0
+
+# For database integration
+# sqlalchemy>=2.0.0
+# psycopg2-binary>=2.9.0  # PostgreSQL
+# pymongo>=4.5.0  # MongoDB
