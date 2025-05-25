@@ -1,31 +1,30 @@
 """
-Utility modules for fingerprint matching system.
+Utility functions and helpers for advance_fingermatcher.
 
-This package contains:
-- BatchProcessor: Batch processing of multiple fingerprints
-- Visualizer: Visualization tools for results
-- Logger: Logging utilities
+This package contains various utility functions for image processing,
+data handling, and other common operations.
 """
 
-try:
-    from .batch_processor import BatchProcessor
-    from .visualizer import Visualizer
-    from .logger import get_logger
-except ImportError:
-    # Handle import errors gracefully
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.warning("Some utility modules could not be imported")
-    
-    class BatchProcessor:
-        def __init__(self):
-            pass
-    
-    class Visualizer:
-        def __init__(self):
-            pass
-    
-    def get_logger(name):
-        return logging.getLogger(name)
+from .image_processing import (
+    normalize_image,
+    enhance_contrast,
+    apply_gabor_filter_bank,
+    calculate_ridge_orientation,
+    calculate_ridge_frequency,
+    create_ridge_mask,
+    enhance_fingerprint_image,
+    resize_image_maintain_aspect,
+    calculate_image_quality_metrics
+)
 
-__all__ = ["BatchProcessor", "Visualizer", "get_logger"]
+__all__ = [
+    'normalize_image',
+    'enhance_contrast',
+    'apply_gabor_filter_bank',
+    'calculate_ridge_orientation',
+    'calculate_ridge_frequency',
+    'create_ridge_mask',
+    'enhance_fingerprint_image',
+    'resize_image_maintain_aspect',
+    'calculate_image_quality_metrics'
+]
