@@ -1,0 +1,74 @@
+<svg width="800" height="150" viewBox="0 0 800 150" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="headerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#764ba2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="150" fill="url(#headerGradient)" rx="10"/>
+  
+  <!-- Fingerprint icon with animation -->
+  <g transform="translate(50, 30)">
+    <circle cx="45" cy="45" r="40" fill="none" stroke="white" stroke-width="2" opacity="0.3"/>
+    <path d="M45 15 C25 15, 10 30, 10 50 C10 70, 25 85, 45 85 C65 85, 80 70, 80 50 C80 30, 65 15, 45 15 M45 25 C35 25, 25 35, 25 45 C25 55, 35 65, 45 65 C55 65, 65 55, 65 45 C65 35, 55 25, 45 25 M45 35 C40 35, 35 40, 35 45 C35 50, 40 55, 45 55 C50 55, 55 50, 55 45 C55 40, 50 35, 45 35" 
+          fill="none" stroke="white" stroke-width="2" filter="url(#glow)">
+      <animate attributeName="stroke-dasharray" values="0,300;150,150;300,0" dur="3s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Minutiae points with pulsing animation -->
+    <circle cx="35" cy="35" r="2" fill="#FFD700">
+      <animate attributeName="r" values="2;4;2" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="55" cy="40" r="2" fill="#FFD700">
+      <animate attributeName="r" values="2;4;2" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="45" cy="55" r="2" fill="#FFD700">
+      <animate attributeName="r" values="2;4;2" dur="2s" begin="1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="30" cy="60" r="2" fill="#FFD700">
+      <animate attributeName="r" values="2;4;2" dur="2s" begin="1.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Title text -->
+  <text x="170" y="60" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white" filter="url(#glow)">
+    Advanced Fingerprint Matcher
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="170" y="85" font-family="Arial, sans-serif" font-size="16" fill="white" opacity="0.9">
+    Enhanced Bozorth3 Algorithm with Rich Minutiae Descriptors
+  </text>
+  
+  <!-- Version badge -->
+  <rect x="170" y="95" width="60" height="20" rx="10" fill="rgba(255,255,255,0.2)"/>
+  <text x="200" y="108" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">v1.0.0</text>
+  
+  <!-- Algorithm indicator -->
+  <g transform="translate(650, 40)">
+    <rect width="120" height="70" rx="10" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="1"/>
+    <text x="60" y="20" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle" font-weight="bold">Algorithms</text>
+    <text x="60" y="35" font-family="Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Enhanced Bozorth3</text>
+    <text x="60" y="48" font-family="Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Rich Descriptors</text>
+    <text x="60" y="61" font-family="Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Quality Weighting</text>
+  </g>
+  
+  <!-- Animated progress bar -->
+  <g transform="translate(170, 110)">
+    <rect width="200" height="6" rx="3" fill="rgba(255,255,255,0.2)"/>
+    <rect width="0" height="6" rx="3" fill="#FFD700">
+      <animate attributeName="width" values="0;200;0" dur="4s" repeatCount="indefinite"/>
+    </rect>
+    <text x="100" y="18" font-family="Arial, sans-serif" font-size="10" fill="white" text-anchor="middle" opacity="0.8">Processing Pipeline</text>
+  </g>
+</svg>
