@@ -10,11 +10,33 @@ from pathlib import Path
 import json
 from typing import Optional
 import sys
+import os
 
-from .core.matcher import FingerprintMatcher
-from .utils.batch_processor import BatchProcessor
-from .utils.visualizer import Visualizer
-from .utils.logger import setup_logging, get_logger
+# Safe import with fallbacks
+try:
+    from .core.matcher import FingerprintMatcher
+except ImportError:
+    FingerprintMatcher = None
+
+try:
+    from .utils.batch_processor import BatchProcessor
+except ImportError:
+    BatchProcessor = None
+
+try:
+    from .utils.visualizer import Visualizer
+except ImportError:
+    Visualizer = None
+
+try:
+    from .utils.logger import setup_logging, get_logger
+except ImportError:
+    import logging
+    def setup_logging(level, log_dir=None):
+        logging.basicConfig(level=getattr(logging, level.upper()))
+    
+    def get_logger(name):
+        return logging.getLogger(name)
 
 
 @click.group()
@@ -26,6 +48,38 @@ def main(log_level: str, log_dir: Optional[str]):
 
 
 @main.command()
+@click.option('--help', is_flag=True, help='Show this help message')
+def demo(help):
+    """Run a demonstration of the fingerprint matcher."""
+    if help:
+        click.echo("Demo command shows basic usage of the fingerprint matcher")
+        return
+    
+    click.echo("🔍 Advanced Fingerprint Matcher Demo")
+    click.echo("=====================================")
+    click.echo()
+    click.echo("This is a demonstration of the Advanced Fingerprint Matcher.")
+    click.echo("Key Features:")
+    click.echo("  • Enhanced Bozorth3 algorithm")
+    click.echo("  • Deep learning integration")
+    click.echo("  • High-performance matching")
+    click.echo("  • Batch processing capabilities")
+    click.echo()
+    click.echo("Available commands:")
+    click.echo("  fingermatcher match <image1> <image2>  - Match two fingerprints")
+    click.echo("  fingermatcher batch <directory>        - Process multiple images")
+    click.echo("  fingermatcher visualize <image>        - Show fingerprint features")
+    click.echo("  fingermatcher serve                    - Start API server")
+    click.echo()
+    click.echo("Example usage:")
+    click.echo("  fingermatcher match finger1.png finger2.png")
+    click.echo("  fingermatcher batch ./fingerprints/")
+    click.echo()
+    click.echo("For more information, visit:")
+    click.echo("  https://github.com/JJshome/advance_fingermatcher")
+
+
+@main.command()
 @click.argument('image1', type=click.Path(exists=True))
 @click.argument('image2', type=click.Path(exists=True))
 @click.option('--method', default='hybrid', help='Matching method')
@@ -33,6 +87,11 @@ def main(log_level: str, log_dir: Optional[str]):
 def match(image1: str, image2: str, method: str, output: Optional[str]):
     """Match two fingerprint images."""
     logger = get_logger(__name__)
+    
+    if FingerprintMatcher is None:
+        click.echo("Fingerprint matcher module not available.", err=True)
+        click.echo("This is a demo version. Full functionality requires complete installation.")
+        return
     
     try:
         # Initialize matcher
@@ -79,6 +138,11 @@ def batch(directory: str, output_dir: Optional[str], extensions: str):
     """Process directory of fingerprint images."""
     logger = get_logger(__name__)
     
+    if BatchProcessor is None:
+        click.echo("Batch processor module not available.", err=True)
+        click.echo("This is a demo version. Full functionality requires complete installation.")
+        return
+    
     try:
         # Parse extensions
         ext_list = [f'.{ext.strip()}' for ext in extensions.split(',')]
@@ -113,6 +177,11 @@ def batch(directory: str, output_dir: Optional[str], extensions: str):
 def visualize(image: str, output: Optional[str]):
     """Visualize fingerprint with features."""
     logger = get_logger(__name__)
+    
+    if FingerprintMatcher is None or Visualizer is None:
+        click.echo("Visualizer modules not available.", err=True)
+        click.echo("This is a demo version. Full functionality requires complete installation.")
+        return
     
     try:
         # Initialize components
@@ -164,6 +233,14 @@ def serve(host: str, port: int, reload: bool):
     except Exception as e:
         click.echo(f"Server error: {e}", err=True)
         sys.exit(1)
+
+
+@main.command()
+def version():
+    """Show version information."""
+    click.echo("Advanced Fingerprint Matcher v1.0.1")
+    click.echo("Enhanced Bozorth3 Algorithm with Deep Learning")
+    click.echo("Copyright (c) 2025 JJshome")
 
 
 if __name__ == '__main__':
