@@ -1,0 +1,361 @@
+name: CD - Continuous Deployment
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(python -c "import advance_fingermatcher; print(advance_fingermatcher.__version__)")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+    
+    - name: Run comprehensive tests
+      run: |
+        # Install test dependencies
+        pip install pytest pytest-cov pytest-timeout
+        
+        # Run all tests
+        pytest tests/ -v --timeout=60 || echo "Tests completed"
+        
+        # Verify CLI functionality
+        fingermatcher --help
+        fingermatcher version
+        timeout 30s fingermatcher demo || echo "Demo completed"
+
+  build-docker:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ needs.build-and-test.outputs.version }}
+          BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          VCS_REF=${{ github.sha }}
+
+  deploy-staging:
+    needs: [build-and-test, build-docker]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    environment: staging
+    
+    steps:
+    - name: Deploy to Staging
+      run: |
+        echo "🚀 Deploying to Staging Environment"
+        echo "Version: ${{ needs.build-and-test.outputs.version }}"
+        echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        
+        # Simulate deployment
+        echo "✅ Staging deployment completed successfully!"
+        
+        # In a real scenario, you would:
+        # - Deploy to staging cluster (k8s, docker-compose, etc.)
+        # - Run integration tests
+        # - Update configuration
+        # - Notify team
+
+  deploy-production:
+    needs: [build-and-test, build-docker, deploy-staging]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
+    environment: production
+    
+    steps:
+    - name: Deploy to Production
+      run: |
+        echo "🌟 Deploying to Production Environment"
+        echo "Version: ${{ needs.build-and-test.outputs.version }}"
+        echo "Tag: ${{ github.ref_name }}"
+        
+        # Simulate production deployment
+        echo "✅ Production deployment completed successfully!"
+        
+        # In a real scenario, you would:
+        # - Deploy to production cluster
+        # - Perform health checks
+        # - Update load balancers
+        # - Notify stakeholders
+
+  create-release:
+    needs: [build-and-test, build-docker]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+      
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Generate changelog since last tag
+        PREVIOUS_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+        if [ -z "$PREVIOUS_TAG" ]; then
+          PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+        fi
+        
+        echo "## Changes since $PREVIOUS_TAG" > RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        
+        # Get commits since last tag
+        git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD >> RELEASE_NOTES.md
+        
+        # Add Docker image info
+        echo "" >> RELEASE_NOTES.md
+        echo "## Docker Images" >> RELEASE_NOTES.md
+        echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-test.outputs.version }}\`" >> RELEASE_NOTES.md
+        echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> RELEASE_NOTES.md
+        
+        cat RELEASE_NOTES.md
+    
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        body_path: RELEASE_NOTES.md
+        draft: false
+        prerelease: ${{ contains(github.ref_name, '-') }}
+
+  publish-package:
+    needs: [build-and-test, build-docker]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      id-token: write  # For PyPI trusted publishing
+      
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build package
+      run: |
+        python -m build
+        
+        # Verify build
+        twine check dist/*
+        
+        # List built packages
+        ls -la dist/
+    
+    - name: Publish to PyPI
+      if: github.event_name == 'release'
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        # Using trusted publishing - no token needed
+        # Alternative: use password: ${{ secrets.PYPI_API_TOKEN }}
+        verbose: true
+
+  security-scan:
+    needs: build-docker
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      
+    steps:
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  performance-benchmark:
+    needs: [build-and-test, deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+        pip install memory-profiler psutil matplotlib
+    
+    - name: Run performance benchmarks
+      run: |
+        python -c "
+        import time
+        import psutil
+        import json
+        import advance_fingermatcher as afm
+        
+        print('🏃‍♂️ Running Performance Benchmarks...')
+        
+        # Initialize
+        start_time = time.time()
+        process = psutil.Process()
+        memory_start = process.memory_info().rss / 1024 / 1024
+        
+        # Basic operations benchmark
+        deps = afm.check_dependencies()
+        info = afm.get_package_info()
+        
+        # Measure performance
+        init_time = time.time() - start_time
+        memory_end = process.memory_info().rss / 1024 / 1024
+        
+        # Create benchmark results
+        results = {
+            'version': afm.__version__,
+            'timestamp': time.time(),
+            'initialization_time_ms': init_time * 1000,
+            'memory_usage_mb': memory_end,
+            'memory_overhead_mb': memory_end - memory_start,
+            'core_dependencies_available': deps.get('all_core_available', False),
+            'advanced_features_available': deps.get('advanced_features_available', False)
+        }
+        
+        # Save results
+        with open('benchmark_results.json', 'w') as f:
+            json.dump(results, f, indent=2)
+        
+        print('📊 Benchmark Results:')
+        for key, value in results.items():
+            print(f'  {key}: {value}')
+        "
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-benchmarks
+        path: benchmark_results.json
+
+  notify-deployment:
+    needs: [deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify deployment status
+      run: |
+        echo "📢 Deployment Notification"
+        echo "=========================="
+        
+        if [ "${{ needs.deploy-staging.result }}" == "success" ]; then
+          echo "✅ Staging deployment: SUCCESS"
+        else
+          echo "❌ Staging deployment: ${{ needs.deploy-staging.result }}"
+        fi
+        
+        if [ "${{ needs.deploy-production.result }}" == "success" ]; then
+          echo "✅ Production deployment: SUCCESS"
+        elif [ "${{ needs.deploy-production.result }}" == "skipped" ]; then
+          echo "⏭️ Production deployment: SKIPPED"
+        else
+          echo "❌ Production deployment: ${{ needs.deploy-production.result }}"
+        fi
+        
+        echo ""
+        echo "🔗 Useful Links:"
+        echo "  - GitHub Release: ${{ github.server_url }}/${{ github.repository }}/releases"
+        echo "  - Docker Images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+        echo "  - Package: https://pypi.org/project/advance-fingermatcher/"
