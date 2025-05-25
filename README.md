@@ -393,23 +393,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🙋 Support
-
-- **Issues**: [GitHub Issues](https://github.com/JJshome/advance_fingermatcher/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/JJshome/advance_fingermatcher/discussions)
-- **Email**: [your-email@domain.com](mailto:your-email@domain.com)
-
----
-
-## 📚 References
-
-1. Maltoni, D., Maio, D., Jain, A. K., & Prabhakar, S. (2009). *Handbook of fingerprint recognition*. Springer.
-2. Watson, C. I., et al. (2007). *User's Guide to NIST Biometric Image Software (NBIS)*.
-3. Ratha, N. K., Connell, J. H., & Bolle, R. M. (2001). *Enhancing security and privacy in biometrics-based authentication systems*.
-4. Jiang, X., & Yau, W. Y. (2000). *Fingerprint minutiae matching based on the local and global structures*.
-
----
-
 ## 🌟 Citation
 
 If you use this software in your research, please cite:
