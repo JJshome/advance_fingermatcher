@@ -16,7 +16,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="advance_fingermatcher",
-    version="1.0.1",
+    version="1.0.2",
     author="JJshome",
     author_email="advance@fingermatcher.com",
     description="Advanced fingerprint matching library with Enhanced Bozorth3 algorithm",
@@ -67,6 +67,8 @@ setup(
         "console_scripts": [
             "fingermatcher=advance_fingermatcher.cli:main",
             "fingermatcher-demo=advance_fingermatcher.cli:demo",
+            "enhanced-bozorth3-demo=examples.enhanced_bozorth3_demo:main",
+            "comprehensive-demo=examples.comprehensive_demo:main",
         ],
     },
     include_package_data=True,
@@ -82,15 +84,20 @@ setup(
         "biometrics",
         "matching",
         "bozorth3",
+        "enhanced-bozorth3",
         "minutiae",
         "recognition",
         "computer-vision",
         "security",
         "authentication",
+        "quality-weighted",
+        "adaptive-tolerance",
+        "multi-stage-matching",
     ],
     project_urls={
         "Bug Reports": "https://github.com/JJshome/advance_fingermatcher/issues",
         "Source": "https://github.com/JJshome/advance_fingermatcher",
-        "Documentation": "https://github.com/JJshome/advance_fingermatcher/wiki",
+        "Documentation": "https://github.com/JJshome/advance_fingermatcher/blob/main/docs/enhanced_bozorth3_algorithm.md",
+        "Enhanced Bozorth3": "https://github.com/JJshome/advance_fingermatcher/blob/main/docs/enhanced_bozorth3_algorithm.md",
     },
 )
