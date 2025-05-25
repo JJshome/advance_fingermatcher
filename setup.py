@@ -16,9 +16,9 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="advance_fingermatcher",
-    version="1.0.0",
+    version="1.0.1",
     author="JJshome",
-    author_email="your-email@domain.com",
+    author_email="advance@fingermatcher.com",
     description="Advanced fingerprint matching library with Enhanced Bozorth3 algorithm",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -44,30 +44,29 @@ setup(
     install_requires=requirements,
     extras_require={
         "dev": [
-            "pytest>=6.0",
-            "pytest-cov>=2.0",
-            "black>=21.0",
-            "flake8>=3.8",
-            "mypy>=0.800",
+            "pytest>=7.0.0",
+            "pytest-cov>=4.0.0",
+            "black>=22.0.0",
+            "flake8>=5.0.0",
+            "mypy>=0.900",
             "sphinx>=4.0",
             "sphinx-rtd-theme>=1.0",
         ],
         "viz": [
-            "matplotlib>=3.3",
-            "seaborn>=0.11",
             "plotly>=5.0",
         ],
         "ml": [
-            "tensorflow>=2.8",
-            "torch>=1.10",
-            "torchvision>=0.11",
+            "tensorflow>=2.8.0",
             "scikit-learn>=1.0",
+        ],
+        "gpu": [
+            "faiss-gpu>=1.7.0",
         ],
     },
     entry_points={
         "console_scripts": [
-            "fingermatcher-demo=examples.enhanced_bozorth3_demo:main",
-            "fingermatcher-test=tests.test_enhanced_bozorth3:main",
+            "fingermatcher=advance_fingermatcher.cli:main",
+            "fingermatcher-demo=advance_fingermatcher.cli:demo",
         ],
     },
     include_package_data=True,
