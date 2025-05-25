@@ -31,82 +31,47 @@
   
   <!-- Terminal content -->
   <g transform="translate(20, 50)">
-    <!-- Prompt -->
-    <text x="0" y="20" font-family="Monaco, Consolas, monospace" font-size="14" fill="#4CAF50" font-weight="bold">
-      $
-    </text>
-    
-    <!-- Command 1 with typing animation -->
+    <!-- Prompt and Command 1 -->
+    <text x="0" y="20" font-family="Monaco, Consolas, monospace" font-size="14" fill="#4CAF50" font-weight="bold">$</text>
     <text x="20" y="20" font-family="Monaco, Consolas, monospace" font-size="14" fill="#fff">
-      <animate attributeName="textLength" values="0;300" dur="2s" fill="freeze"/>
       git clone https://github.com/JJshome/advance_fingermatcher.git
     </text>
     
     <!-- Output 1 -->
-    <text x="0" y="40" font-family="Monaco, Consolas, monospace" font-size="12" fill="#888" opacity="0">
-      <animate attributeName="opacity" values="0;1" dur="0.5s" begin="2s" fill="freeze"/>
+    <text x="0" y="40" font-family="Monaco, Consolas, monospace" font-size="12" fill="#888">
       Cloning into 'advance_fingermatcher'...
     </text>
     
     <!-- Progress bar -->
-    <g opacity="0">
-      <animate attributeName="opacity" values="0;1" dur="0.5s" begin="2.5s" fill="freeze"/>
-      <rect x="0" y="50" width="400" height="4" fill="#333" rx="2"/>
-      <rect x="0" y="50" width="0" height="4" fill="#4CAF50" rx="2">
-        <animate attributeName="width" values="0;400" dur="3s" begin="2.5s" fill="freeze"/>
-      </rect>
-    </g>
+    <rect x="0" y="50" width="400" height="4" fill="#333" rx="2"/>
+    <rect x="0" y="50" width="320" height="4" fill="#4CAF50" rx="2"/>
     
     <!-- Completion message -->
-    <text x="0" y="70" font-family="Monaco, Consolas, monospace" font-size="12" fill="#4CAF50" opacity="0">
-      <animate attributeName="opacity" values="0;1" dur="0.5s" begin="5.5s" fill="freeze"/>
+    <text x="0" y="70" font-family="Monaco, Consolas, monospace" font-size="12" fill="#4CAF50">
       ✓ Repository cloned successfully
     </text>
     
-    <!-- Prompt 2 -->
-    <text x="0" y="95" font-family="Monaco, Consolas, monospace" font-size="14" fill="#4CAF50" font-weight="bold" opacity="0">
-      <animate attributeName="opacity" values="0;1" dur="0.5s" begin="6s" fill="freeze"/>
-      $
-    </text>
-    
-    <!-- Command 2 -->
-    <text x="20" y="95" font-family="Monaco, Consolas, monospace" font-size="14" fill="#fff" opacity="0">
-      <animate attributeName="opacity" values="0;1" dur="0.5s" begin="6s" fill="freeze"/>
-      <animate attributeName="textLength" values="0;200" dur="1.5s" begin="6.5s" fill="freeze"/>
-      cd advance_fingermatcher && pip install -e .
+    <!-- Prompt and Command 2 -->
+    <text x="0" y="95" font-family="Monaco, Consolas, monospace" font-size="14" fill="#4CAF50" font-weight="bold">$</text>
+    <text x="20" y="95" font-family="Monaco, Consolas, monospace" font-size="14" fill="#fff">
+      cd advance_fingermatcher &amp;&amp; pip install -e .
     </text>
     
     <!-- Installation progress -->
-    <g opacity="0">
-      <animate attributeName="opacity" values="0;1" dur="0.5s" begin="8s" fill="freeze"/>
-      <text x="0" y="115" font-family="Monaco, Consolas, monospace" font-size="12" fill="#888">
-        Installing dependencies...
-      </text>
-      
-      <!-- Spinning loader -->
-      <g transform="translate(200, 110)">
-        <circle cx="0" cy="0" r="8" fill="none" stroke="#4CAF50" stroke-width="2" stroke-dasharray="5,5">
-          <animateTransform attributeName="transform" type="rotate" values="0;360" dur="1s" begin="8s" repeatCount="3"/>
-        </circle>
-      </g>
-    </g>
+    <text x="0" y="115" font-family="Monaco, Consolas, monospace" font-size="12" fill="#888">
+      Installing dependencies...
+    </text>
     
     <!-- Final success message -->
-    <text x="0" y="135" font-family="Monaco, Consolas, monospace" font-size="12" fill="#4CAF50" opacity="0">
-      <animate attributeName="opacity" values="0;1" dur="0.5s" begin="11s" fill="freeze"/>
+    <text x="0" y="135" font-family="Monaco, Consolas, monospace" font-size="12" fill="#4CAF50">
       ✓ Installation completed successfully!
     </text>
     
     <!-- Ready prompt -->
-    <g opacity="0">
-      <animate attributeName="opacity" values="0;1" dur="0.5s" begin="11.5s" fill="freeze"/>
-      <text x="0" y="155" font-family="Monaco, Consolas, monospace" font-size="14" fill="#4CAF50" font-weight="bold">
-        $
-      </text>
-      <text x="20" y="155" font-family="Monaco, Consolas, monospace" font-size="14" fill="#fff">
-        python -c "import advance_fingermatcher; print('Ready to match!')"
-      </text>
-    </g>
+    <text x="0" y="155" font-family="Monaco, Consolas, monospace" font-size="14" fill="#4CAF50" font-weight="bold">$</text>
+    <text x="20" y="155" font-family="Monaco, Consolas, monospace" font-size="14" fill="#fff">
+      python -c "import advance_fingermatcher; print('Ready to match!')"
+    </text>
   </g>
   
   <!-- Side decorations -->
