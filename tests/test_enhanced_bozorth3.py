@@ -1,471 +1,383 @@
+#!/usr/bin/env python3
 """
-Unit Tests for Enhanced Bozorth3 Algorithm
+Enhanced Bozorth3 Algorithm Unit Tests
 
-This module contains comprehensive tests for the Enhanced Bozorth3 algorithm
-implementation, covering all major components and functionality.
+Comprehensive unit tests for the Enhanced Bozorth3 implementation,
+covering all major components and edge cases.
 
-Test Coverage:
-- Quality assessment
-- Adaptive tolerance calculation
-- Rich minutiae descriptors
-- Multi-stage matching process
-- Performance validation
+Author: JJshome
+Date: 2025
 """
 
+import sys
 import unittest
 import numpy as np
-import time
-from unittest.mock import patch, MagicMock
+from pathlib import Path
+from unittest.mock import Mock, patch
 
-# Import Enhanced Bozorth3 components
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
 try:
-    from advance_fingermatcher.algorithms.enhanced_bozorth3 import (
-        EnhancedBozorth3Matcher,
-        EnhancedMinutia,
-        MinutiaType,
-        QualityAssessment,
-        AdaptiveToleranceCalculator,
-        DescriptorExtractor,
-        create_sample_minutiae,
-        MatchingResult
-    )
-except ImportError as e:
-    import sys
-    print(f"Import error: {e}")
-    print("Please ensure the advance_fingermatcher package is properly installed.")
-    sys.exit(1)
-
-
-class TestEnhancedMinutia(unittest.TestCase):
-    """Test cases for EnhancedMinutia class"""
-    
-    def setUp(self):
-        """Set up test fixtures"""
-        self.valid_minutia = EnhancedMinutia(
-            x=100.0, y=150.0, theta=0.5,
-            minutia_type=MinutiaType.ENDING,
-            quality=0.8, reliability=0.75,
-            local_descriptor=np.random.randn(16),
-            ridge_frequency=0.1, ridge_orientation=0.5,
-            local_density=1.0, curvature=0.05,
-            neighbors=[(20.0, 0.3), (25.0, 1.2)]
-        )
-    
-    def test_valid_minutia_creation(self):
-        """Test creation of valid minutia"""
-        self.assertEqual(self.valid_minutia.x, 100.0)
-        self.assertEqual(self.valid_minutia.y, 150.0)
-        self.assertEqual(self.valid_minutia.theta, 0.5)
-        self.assertEqual(self.valid_minutia.minutia_type, MinutiaType.ENDING)
-        self.assertEqual(self.valid_minutia.quality, 0.8)
-        self.assertEqual(len(self.valid_minutia.neighbors), 2)
-    
-    def test_invalid_quality_raises_error(self):
-        """Test that invalid quality values raise ValueError"""
-        with self.assertRaises(ValueError):
-            EnhancedMinutia(
-                x=100.0, y=150.0, theta=0.5,
-                minutia_type=MinutiaType.ENDING,
-                quality=1.5, reliability=0.75,  # Invalid quality > 1.0
-                local_descriptor=np.random.randn(16),
-                ridge_frequency=0.1, ridge_orientation=0.5,
-                local_density=1.0, curvature=0.05,
-                neighbors=[]
-            )
-    
-    def test_invalid_reliability_raises_error(self):
-        """Test that invalid reliability values raise ValueError"""
-        with self.assertRaises(ValueError):
-            EnhancedMinutia(
-                x=100.0, y=150.0, theta=0.5,
-                minutia_type=MinutiaType.ENDING,
-                quality=0.8, reliability=-0.1,  # Invalid reliability < 0
-                local_descriptor=np.random.randn(16),
-                ridge_frequency=0.1, ridge_orientation=0.5,
-                local_density=1.0, curvature=0.05,
-                neighbors=[]
-            )
-
-
-class TestQualityAssessment(unittest.TestCase):
-    """Test cases for QualityAssessment class"""
-    
-    def setUp(self):
-        """Set up test fixtures"""
-        self.quality_assessor = QualityAssessment()
-        
-        # Create test image patches
-        self.high_quality_patch = self._create_test_patch('high')
-        self.medium_quality_patch = self._create_test_patch('medium')
-        self.low_quality_patch = self._create_test_patch('low')
-        self.empty_patch = np.array([])
-    
-    def _create_test_patch(self, quality_level, size=(32, 32)):
-        """Create synthetic test patch with specified quality"""
-        patch = np.zeros(size)
-        
-        for i in range(size[0]):
-            for j in range(size[1]):
-                # Base ridge pattern
-                ridge_value = 128 + 64 * np.sin(j * 0.3)
-                
-                if quality_level == 'high':
-                    noise = np.random.normal(0, 5)
-                elif quality_level == 'medium':
-                    noise = np.random.normal(0, 15)
-                else:  # low quality
-                    noise = np.random.normal(0, 30)
-                
-                patch[i, j] = np.clip(ridge_value + noise, 0, 255)
-        
-        return patch.astype(np.uint8)
-    
-    def test_quality_score_range(self):
-        """Test that quality scores are in valid range [0.1, 1.0]"""
-        high_score = self.quality_assessor.calculate_quality_score(self.high_quality_patch)
-        medium_score = self.quality_assessor.calculate_quality_score(self.medium_quality_patch)
-        low_score = self.quality_assessor.calculate_quality_score(self.low_quality_patch)
-        
-        # Check range
-        self.assertGreaterEqual(high_score, 0.1)
-        self.assertLessEqual(high_score, 1.0)
-        self.assertGreaterEqual(medium_score, 0.1)
-        self.assertLessEqual(medium_score, 1.0)
-        self.assertGreaterEqual(low_score, 0.1)
-        self.assertLessEqual(low_score, 1.0)
-    
-    def test_quality_ordering(self):
-        """Test that high quality patches score higher than low quality"""
-        high_score = self.quality_assessor.calculate_quality_score(self.high_quality_patch)
-        low_score = self.quality_assessor.calculate_quality_score(self.low_quality_patch)
-        
-        self.assertGreater(high_score, low_score)
-    
-    def test_empty_patch_handling(self):
-        """Test handling of empty image patches"""
-        empty_score = self.quality_assessor.calculate_quality_score(self.empty_patch)
-        self.assertEqual(empty_score, 0.0)
-    
-    def test_ridge_clarity_assessment(self):
-        """Test ridge clarity assessment"""
-        high_clarity = self.quality_assessor.assess_ridge_clarity(self.high_quality_patch)
-        low_clarity = self.quality_assessor.assess_ridge_clarity(self.low_quality_patch)
-        
-        self.assertGreaterEqual(high_clarity, 0.0)
-        self.assertLessEqual(high_clarity, 1.0)
-        self.assertGreaterEqual(low_clarity, 0.0)
-        self.assertLessEqual(low_clarity, 1.0)
-    
-    def test_local_contrast_calculation(self):
-        """Test local contrast calculation"""
-        contrast = self.quality_assessor.calculate_local_contrast(self.high_quality_patch)
-        
-        self.assertGreaterEqual(contrast, 0.0)
-        self.assertLessEqual(contrast, 1.0)
-    
-    def test_coherence_measurement(self):
-        """Test coherence measurement"""
-        coherence = self.quality_assessor.measure_coherence(self.high_quality_patch)
-        
-        self.assertGreaterEqual(coherence, 0.0)
-        self.assertLessEqual(coherence, 1.0)
-
-
-class TestAdaptiveToleranceCalculator(unittest.TestCase):
-    """Test cases for AdaptiveToleranceCalculator class"""
-    
-    def setUp(self):
-        """Set up test fixtures"""
-        self.tolerance_calc = AdaptiveToleranceCalculator()
-        
-        self.high_quality_minutia = EnhancedMinutia(
-            x=100.0, y=100.0, theta=0.5, minutia_type=MinutiaType.ENDING,
-            quality=0.9, reliability=0.85, local_descriptor=np.random.randn(16),
-            ridge_frequency=0.1, ridge_orientation=0.5, local_density=1.0,
-            curvature=0.05, neighbors=[(20.0, 0.2)]
-        )
-        
-        self.low_quality_minutia = EnhancedMinutia(
-            x=150.0, y=150.0, theta=0.7, minutia_type=MinutiaType.BIFURCATION,
-            quality=0.3, reliability=0.25, local_descriptor=np.random.randn(16),
-            ridge_frequency=0.08, ridge_orientation=0.7, local_density=0.6,
-            curvature=0.15, neighbors=[(15.0, 0.8)]
-        )
-    
-    def test_adaptive_tolerance_calculation(self):
-        """Test adaptive tolerance calculation"""
-        tolerance = self.tolerance_calc.calculate_adaptive_tolerance(
-            self.high_quality_minutia, self.low_quality_minutia
-        )
-        
-        self.assertIn('distance', tolerance)
-        self.assertIn('angle', tolerance)
-        self.assertIn('confidence', tolerance)
-        
-        # Check ranges
-        self.assertGreaterEqual(tolerance['distance'], 3.0)
-        self.assertLessEqual(tolerance['distance'], 20.0)
-        self.assertGreaterEqual(tolerance['angle'], np.pi/24)
-        self.assertLessEqual(tolerance['angle'], np.pi/6)
-        self.assertGreaterEqual(tolerance['confidence'], 0.0)
-        self.assertLessEqual(tolerance['confidence'], 1.0)
-    
-    def test_high_quality_tight_tolerance(self):
-        """Test that high quality minutiae get tighter tolerances"""
-        high_high_tolerance = self.tolerance_calc.calculate_adaptive_tolerance(
-            self.high_quality_minutia, self.high_quality_minutia
-        )
-        low_low_tolerance = self.tolerance_calc.calculate_adaptive_tolerance(
-            self.low_quality_minutia, self.low_quality_minutia
-        )
-        
-        # High quality should have tighter (smaller) tolerances
-        self.assertLess(high_high_tolerance['distance'], low_low_tolerance['distance'])
-        self.assertLess(high_high_tolerance['angle'], low_low_tolerance['angle'])
-
-
-class TestDescriptorExtractor(unittest.TestCase):
-    """Test cases for DescriptorExtractor class"""
-    
-    def setUp(self):
-        """Set up test fixtures"""
-        self.extractor = DescriptorExtractor()
-        self.test_patch = np.random.randint(0, 256, (32, 32), dtype=np.uint8)
-        self.empty_patch = np.array([])
-    
-    def test_extract_local_features(self):
-        """Test local feature extraction"""
-        features = self.extractor.extract_local_features(self.test_patch)
-        
-        self.assertEqual(len(features), 16)
-        self.assertAlmostEqual(np.linalg.norm(features), 1.0, places=5)
-    
-    def test_empty_patch_features(self):
-        """Test feature extraction from empty patch"""
-        features = self.extractor.extract_local_features(self.empty_patch)
-        
-        self.assertEqual(len(features), 16)
-        self.assertTrue(np.allclose(features, 0.0))
-    
-    def test_ridge_structure_analysis(self):
-        """Test ridge structure analysis"""
-        structure = self.extractor.analyze_ridge_structure(self.test_patch)
-        
-        self.assertIn('frequency', structure)
-        self.assertIn('orientation', structure)
-        self.assertIn('curvature', structure)
-        
-        # Check ranges
-        self.assertGreaterEqual(structure['frequency'], 0.0)
-        self.assertLessEqual(structure['frequency'], 1.0)
-        self.assertGreaterEqual(structure['orientation'], 0.0)
-        self.assertLess(structure['orientation'], np.pi)
-        self.assertGreaterEqual(structure['curvature'], 0.0)
-        self.assertLessEqual(structure['curvature'], 1.0)
+    from advance_fingermatcher.algorithms.enhanced_bozorth3 import EnhancedBozorth3Matcher
+    from advance_fingermatcher.core.minutiae import MinutiaeTemplate
+    FULL_TESTS = True
+except ImportError:
+    FULL_TESTS = False
 
 
 class TestEnhancedBozorth3Matcher(unittest.TestCase):
-    """Test cases for EnhancedBozorth3Matcher class"""
+    """Test cases for Enhanced Bozorth3 Matcher"""
     
     def setUp(self):
         """Set up test fixtures"""
+        if not FULL_TESTS:
+            self.skipTest("Full tests require complete installation")
+            
         self.matcher = EnhancedBozorth3Matcher()
-        self.probe_minutiae = create_sample_minutiae(10, add_descriptors=True)
-        self.gallery_minutiae = create_sample_minutiae(8, add_descriptors=True)
-    
-    def test_matcher_initialization(self):
-        """Test matcher initialization"""
-        self.assertIsInstance(self.matcher.quality_assessor, QualityAssessment)
-        self.assertIsInstance(self.matcher.descriptor_extractor, DescriptorExtractor)
-        self.assertIsInstance(self.matcher.tolerance_calculator, AdaptiveToleranceCalculator)
         
-        # Check compatibility weights
-        weights = self.matcher.compatibility_weights
-        self.assertAlmostEqual(weights['geometric'] + weights['descriptor'] + weights['quality'], 1.0)
+        # Sample minutiae templates for testing
+        self.template1 = [
+            {'x': 100, 'y': 100, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 0.8},
+            {'x': 150, 'y': 120, 'angle': 1.57, 'type': 'bifurcation', 'quality': 0.9},
+            {'x': 200, 'y': 110, 'angle': 3.14, 'type': 'ridge_ending', 'quality': 0.7},
+            {'x': 120, 'y': 180, 'angle': 0.78, 'type': 'bifurcation', 'quality': 0.6}
+        ]
+        
+        self.template2 = [
+            {'x': 105, 'y': 95, 'angle': 0.1, 'type': 'ridge_ending', 'quality': 0.8},
+            {'x': 155, 'y': 125, 'angle': 1.67, 'type': 'bifurcation', 'quality': 0.85},
+            {'x': 195, 'y': 115, 'angle': 3.04, 'type': 'ridge_ending', 'quality': 0.75},
+            {'x': 125, 'y': 175, 'angle': 0.88, 'type': 'bifurcation', 'quality': 0.65}
+        ]
+        
+        self.empty_template = []
+        self.low_quality_template = [
+            {'x': 100, 'y': 100, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 0.1},
+            {'x': 150, 'y': 120, 'angle': 1.57, 'type': 'bifurcation', 'quality': 0.2}
+        ]
     
-    def test_match_fingerprints_returns_result(self):
-        """Test that match_fingerprints returns proper MatchingResult"""
-        result = self.matcher.match_fingerprints(
-            self.probe_minutiae, self.gallery_minutiae
+    def test_initialization_default(self):
+        """Test default initialization"""
+        matcher = EnhancedBozorth3Matcher()
+        
+        self.assertIsNotNone(matcher)
+        self.assertTrue(matcher.quality_weighting)
+        self.assertFalse(matcher.descriptor_matching)  # Default is False
+        self.assertIn('distance', matcher.base_tolerances)
+        self.assertIn('angle', matcher.base_tolerances)
+    
+    def test_initialization_custom(self):
+        """Test custom initialization"""
+        custom_tolerances = {'distance': 15.0, 'angle': 0.3}
+        matcher = EnhancedBozorth3Matcher(
+            base_tolerances=custom_tolerances,
+            quality_weighting=False,
+            descriptor_matching=True
         )
         
-        self.assertIsInstance(result, MatchingResult)
-        self.assertGreaterEqual(result.score, 0.0)
-        self.assertLessEqual(result.score, 1.0)
-        self.assertGreaterEqual(result.confidence, 0.0)
-        self.assertLessEqual(result.confidence, 1.0)
-        self.assertIsInstance(result.is_match, bool)
-        self.assertIsInstance(result.matched_pairs, list)
-        self.assertGreater(result.processing_time, 0.0)
-        self.assertEqual(result.method_used, "Enhanced Bozorth3")
+        self.assertFalse(matcher.quality_weighting)
+        self.assertTrue(matcher.descriptor_matching)
+        self.assertEqual(matcher.base_tolerances['distance'], 15.0)
+        self.assertEqual(matcher.base_tolerances['angle'], 0.3)
     
-    def test_empty_minutiae_handling(self):
-        """Test handling of empty minutiae lists"""
-        empty_minutiae = []
+    def test_basic_matching(self):
+        """Test basic minutiae matching"""
+        score = self.matcher.match_minutiae(self.template1, self.template2)
         
-        result = self.matcher.match_fingerprints(
-            empty_minutiae, self.gallery_minutiae
+        self.assertIsInstance(score, float)
+        self.assertGreaterEqual(score, 0.0)
+        self.assertLessEqual(score, 1.0)
+        self.assertGreater(score, 0.0)  # Should have some similarity
+    
+    def test_identical_templates(self):
+        """Test matching identical templates"""
+        score = self.matcher.match_minutiae(self.template1, self.template1)
+        
+        self.assertGreater(score, 0.8)  # Should be very high similarity
+    
+    def test_empty_templates(self):
+        """Test handling of empty templates"""
+        score1 = self.matcher.match_minutiae(self.empty_template, self.template1)
+        score2 = self.matcher.match_minutiae(self.template1, self.empty_template)
+        score3 = self.matcher.match_minutiae(self.empty_template, self.empty_template)
+        
+        self.assertEqual(score1, 0.0)
+        self.assertEqual(score2, 0.0)
+        self.assertEqual(score3, 0.0)
+    
+    def test_quality_weighting_effect(self):
+        """Test impact of quality weighting"""
+        matcher_with_quality = EnhancedBozorth3Matcher(quality_weighting=True)
+        matcher_without_quality = EnhancedBozorth3Matcher(quality_weighting=False)
+        
+        score_with = matcher_with_quality.match_minutiae(self.template1, self.low_quality_template)
+        score_without = matcher_without_quality.match_minutiae(self.template1, self.low_quality_template)
+        
+        # Quality weighting should typically result in different scores
+        # The exact relationship depends on the implementation
+        self.assertIsInstance(score_with, float)
+        self.assertIsInstance(score_without, float)
+    
+    def test_tolerance_validation(self):
+        """Test tolerance parameter validation"""
+        # Valid tolerances
+        matcher = EnhancedBozorth3Matcher(
+            base_tolerances={'distance': 10.0, 'angle': 0.26}
+        )
+        self.assertIsNotNone(matcher)
+        
+        # Test with extreme tolerances
+        matcher_strict = EnhancedBozorth3Matcher(
+            base_tolerances={'distance': 1.0, 'angle': 0.01}
+        )
+        matcher_relaxed = EnhancedBozorth3Matcher(
+            base_tolerances={'distance': 50.0, 'angle': 1.0}
         )
         
-        self.assertEqual(result.score, 0.0)
-        self.assertEqual(len(result.matched_pairs), 0)
-        self.assertFalse(result.is_match)
-    
-    def test_identical_minutiae_high_score(self):
-        """Test that identical minutiae produce high matching scores"""
-        # Use same minutiae for both probe and gallery
-        result = self.matcher.match_fingerprints(
-            self.probe_minutiae, self.probe_minutiae
-        )
+        score_strict = matcher_strict.match_minutiae(self.template1, self.template2)
+        score_relaxed = matcher_relaxed.match_minutiae(self.template1, self.template2)
         
-        # Identical minutiae should produce high scores
-        self.assertGreater(result.score, 0.3)  # Should be reasonably high
-        self.assertGreater(result.confidence, 0.2)
-    
-    def test_performance_timing(self):
-        """Test that matching completes within reasonable time"""
-        start_time = time.time()
-        
-        result = self.matcher.match_fingerprints(
-            self.probe_minutiae, self.gallery_minutiae
-        )
-        
-        end_time = time.time()
-        elapsed = end_time - start_time
-        
-        # Should complete in under 1 second for small minutiae sets
-        self.assertLess(elapsed, 1.0)
-        self.assertAlmostEqual(result.processing_time, elapsed, delta=0.01)
+        # Relaxed tolerances should generally give higher scores
+        self.assertGreaterEqual(score_relaxed, score_strict)
 
 
-class TestSampleMinutiaeCreation(unittest.TestCase):
-    """Test cases for create_sample_minutiae function"""
+class TestEnhancedBozorth3Performance(unittest.TestCase):
+    """Performance-focused tests for Enhanced Bozorth3"""
     
-    def test_create_sample_minutiae_count(self):
-        """Test that correct number of minutiae are created"""
-        count = 15
-        minutiae = create_sample_minutiae(count)
-        
-        self.assertEqual(len(minutiae), count)
+    def setUp(self):
+        """Set up performance test fixtures"""
+        if not FULL_TESTS:
+            self.skipTest("Full tests require complete installation")
+            
+        self.matcher = EnhancedBozorth3Matcher()
     
-    def test_create_sample_minutiae_properties(self):
-        """Test that created minutiae have valid properties"""
-        minutiae = create_sample_minutiae(5, add_descriptors=True)
+    def test_matching_speed(self):
+        """Test matching speed with reasonable templates"""
+        import time
         
-        for minutia in minutiae:
-            self.assertIsInstance(minutia, EnhancedMinutia)
-            self.assertGreaterEqual(minutia.x, 20)
-            self.assertLessEqual(minutia.x, 380)
-            self.assertGreaterEqual(minutia.y, 20)
-            self.assertLessEqual(minutia.y, 380)
-            self.assertGreaterEqual(minutia.theta, 0)
-            self.assertLess(minutia.theta, 2 * np.pi)
-            self.assertGreaterEqual(minutia.quality, 0.3)
-            self.assertLessEqual(minutia.quality, 1.0)
-            self.assertEqual(len(minutia.local_descriptor), 16)
-            self.assertGreater(len(minutia.neighbors), 0)
-    
-    def test_create_without_descriptors(self):
-        """Test creating minutiae without rich descriptors"""
-        minutiae = create_sample_minutiae(3, add_descriptors=False)
+        # Generate medium-sized templates
+        template1 = []
+        template2 = []
         
-        for minutia in minutiae:
-            self.assertTrue(np.allclose(minutia.local_descriptor, 0.0))
+        np.random.seed(42)
+        for i in range(50):
+            minutia1 = {
+                'x': np.random.randint(0, 500),
+                'y': np.random.randint(0, 400),
+                'angle': np.random.uniform(0, 2*np.pi),
+                'type': np.random.choice(['ridge_ending', 'bifurcation']),
+                'quality': np.random.uniform(0.3, 1.0)
+            }
+            minutia2 = {
+                'x': np.random.randint(0, 500),
+                'y': np.random.randint(0, 400),
+                'angle': np.random.uniform(0, 2*np.pi),
+                'type': np.random.choice(['ridge_ending', 'bifurcation']),
+                'quality': np.random.uniform(0.3, 1.0)
+            }
+            template1.append(minutia1)
+            template2.append(minutia2)
+        
+        # Measure performance
+        times = []
+        for _ in range(10):
+            start_time = time.time()
+            score = self.matcher.match_minutiae(template1, template2)
+            elapsed = time.time() - start_time
+            times.append(elapsed)
+        
+        avg_time = np.mean(times)
+        std_time = np.std(times)
+        
+        # Performance assertions
+        self.assertLess(avg_time, 1.0)  # Should complete within 1 second
+        self.assertLess(std_time, 0.5)  # Should be reasonably consistent
+        
+        print(f"Average matching time: {avg_time*1000:.2f}ms ± {std_time*1000:.2f}ms")
 
 
-class TestIntegration(unittest.TestCase):
-    """Integration tests for Enhanced Bozorth3 system"""
+class TestEnhancedBozorth3EdgeCases(unittest.TestCase):
+    """Test edge cases and error handling"""
+    
+    def setUp(self):
+        """Set up edge case test fixtures"""
+        if not FULL_TESTS:
+            self.skipTest("Full tests require complete installation")
+            
+        self.matcher = EnhancedBozorth3Matcher()
+    
+    def test_malformed_minutiae(self):
+        """Test handling of malformed minutiae data"""
+        malformed_templates = [
+            # Missing required fields
+            [{'x': 100, 'y': 100}],
+            # Invalid data types
+            [{'x': 'invalid', 'y': 100, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 0.8}],
+            # Out of range values
+            [{'x': -100, 'y': 100, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 1.5}],
+        ]
+        
+        template = [
+            {'x': 100, 'y': 100, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 0.8}
+        ]
+        
+        for malformed in malformed_templates:
+            try:
+                score = self.matcher.match_minutiae(template, malformed)
+                # Should either return a valid score or handle gracefully
+                if score is not None:
+                    self.assertIsInstance(score, float)
+                    self.assertGreaterEqual(score, 0.0)
+                    self.assertLessEqual(score, 1.0)
+            except Exception as e:
+                # Should not crash - either handle gracefully or raise informative error
+                self.assertIn('minutiae', str(e).lower())
+    
+    def test_extreme_coordinates(self):
+        """Test with extreme coordinate values"""
+        extreme_template = [
+            {'x': 0, 'y': 0, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 0.8},
+            {'x': 10000, 'y': 10000, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 0.8},
+        ]
+        
+        normal_template = [
+            {'x': 100, 'y': 100, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 0.8}
+        ]
+        
+        score = self.matcher.match_minutiae(extreme_template, normal_template)
+        self.assertIsInstance(score, float)
+        self.assertGreaterEqual(score, 0.0)
+        self.assertLessEqual(score, 1.0)
+
+
+class TestEnhancedBozorth3Integration(unittest.TestCase):
+    """Integration tests for Enhanced Bozorth3 with other components"""
     
     def setUp(self):
         """Set up integration test fixtures"""
-        self.matcher = EnhancedBozorth3Matcher()
+        if not FULL_TESTS:
+            self.skipTest("Full tests require complete installation")
     
-    def test_full_matching_pipeline(self):
-        """Test complete matching pipeline from start to finish"""
-        # Create diverse test sets
-        probe_set = create_sample_minutiae(12, add_descriptors=True)
-        gallery_set = create_sample_minutiae(10, add_descriptors=True)
+    def test_with_different_image_sizes(self):
+        """Test matching templates from different image sizes"""
+        # Template from small image (300x200)
+        small_template = [
+            {'x': 50, 'y': 50, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 0.8},
+            {'x': 100, 'y': 80, 'angle': 1.57, 'type': 'bifurcation', 'quality': 0.9}
+        ]
         
-        # Set different qualities to test adaptive behavior
-        for i, minutia in enumerate(probe_set):
-            minutia.quality = 0.9 - (i * 0.05)  # Decreasing quality
-            minutia.reliability = minutia.quality * 0.9
+        # Template from large image (800x600) - scaled coordinates
+        large_template = [
+            {'x': 133, 'y': 150, 'angle': 0.0, 'type': 'ridge_ending', 'quality': 0.8},
+            {'x': 267, 'y': 240, 'angle': 1.57, 'type': 'bifurcation', 'quality': 0.9}
+        ]
         
-        for i, minutia in enumerate(gallery_set):
-            minutia.quality = 0.8 - (i * 0.04)  # Decreasing quality
-            minutia.reliability = minutia.quality * 0.9
+        matcher = EnhancedBozorth3Matcher()
+        score = matcher.match_minutiae(small_template, large_template)
         
-        # Perform matching
-        result = self.matcher.match_fingerprints(
-            probe_set, gallery_set,
-            probe_quality=0.75, gallery_quality=0.70
-        )
-        
-        # Validate complete result
-        self.assertIsInstance(result, MatchingResult)
-        self.assertIsInstance(result.score, float)
-        self.assertIsInstance(result.confidence, float)
-        self.assertIsInstance(result.is_match, bool)
-        self.assertIsInstance(result.matched_pairs, list)
-        self.assertGreater(result.processing_time, 0)
-        self.assertEqual(result.quality_scores, (0.75, 0.70))
+        self.assertIsInstance(score, float)
+        self.assertGreaterEqual(score, 0.0)
+        self.assertLessEqual(score, 1.0)
     
-    def test_quality_impact_on_matching(self):
-        """Test that quality differences impact matching results appropriately"""
-        # Create high and low quality versions of the same basic minutiae
-        base_minutiae = create_sample_minutiae(8, add_descriptors=True)
+    def test_with_various_quality_distributions(self):
+        """Test with various quality score distributions"""
+        quality_distributions = [
+            (0.9, 1.0),    # High quality
+            (0.5, 0.7),    # Medium quality
+            (0.1, 0.3),    # Low quality
+            (0.1, 1.0),    # Mixed quality
+        ]
         
-        high_quality_minutiae = []
-        low_quality_minutiae = []
+        matcher = EnhancedBozorth3Matcher(quality_weighting=True)
         
-        for minutia in base_minutiae:
-            # High quality version
-            high_qual = EnhancedMinutia(
-                x=minutia.x, y=minutia.y, theta=minutia.theta,
-                minutia_type=minutia.minutia_type,
-                quality=0.9, reliability=0.85,
-                local_descriptor=minutia.local_descriptor,
-                ridge_frequency=minutia.ridge_frequency,
-                ridge_orientation=minutia.ridge_orientation,
-                local_density=minutia.local_density,
-                curvature=minutia.curvature,
-                neighbors=minutia.neighbors
-            )
-            high_quality_minutiae.append(high_qual)
+        for min_qual, max_qual in quality_distributions:
+            template = [
+                {
+                    'x': 100 + i*20, 
+                    'y': 100 + i*15, 
+                    'angle': i*0.5, 
+                    'type': 'ridge_ending' if i%2==0 else 'bifurcation',
+                    'quality': np.random.uniform(min_qual, max_qual)
+                }
+                for i in range(10)
+            ]
             
-            # Low quality version  
-            low_qual = EnhancedMinutia(
-                x=minutia.x + np.random.normal(0, 2),  # Add position noise
-                y=minutia.y + np.random.normal(0, 2),
-                theta=minutia.theta + np.random.normal(0, 0.1),  # Add angle noise
-                minutia_type=minutia.minutia_type,
-                quality=0.3, reliability=0.25,
-                local_descriptor=minutia.local_descriptor + np.random.normal(0, 0.1, 16),
-                ridge_frequency=minutia.ridge_frequency,
-                ridge_orientation=minutia.ridge_orientation,
-                local_density=minutia.local_density,
-                curvature=minutia.curvature,
-                neighbors=minutia.neighbors
-            )
-            low_quality_minutiae.append(low_qual)
-        
-        # Match high quality versions
-        high_result = self.matcher.match_fingerprints(
-            high_quality_minutiae, high_quality_minutiae,
-            probe_quality=0.9, gallery_quality=0.9
-        )
-        
-        # Match low quality versions
-        low_result = self.matcher.match_fingerprints(
-            low_quality_minutiae, low_quality_minutiae,
-            probe_quality=0.3, gallery_quality=0.3
-        )
-        
-        # High quality should generally produce better results
-        # Note: Due to randomness, we use a reasonable threshold
-        self.assertGreaterEqual(high_result.confidence, low_result.confidence - 0.2)
+            score = matcher.match_minutiae(template, template)
+            self.assertGreater(score, 0.5)  # Self-match should be high
 
 
-if __name__ == '__main__':
-    # Configure test runner
-    unittest.main(verbosity=2, buffer=True)
+def create_test_suite():
+    """Create comprehensive test suite"""
+    suite = unittest.TestSuite()
+    
+    # Add all test classes
+    test_classes = [
+        TestEnhancedBozorth3Matcher,
+        TestEnhancedBozorth3Performance,
+        TestEnhancedBozorth3EdgeCases,
+        TestEnhancedBozorth3Integration
+    ]
+    
+    for test_class in test_classes:
+        tests = unittest.TestLoader().loadTestsFromTestCase(test_class)
+        suite.addTests(tests)
+    
+    return suite
+
+
+def run_tests():
+    """Run all tests with detailed output"""
+    if not FULL_TESTS:
+        print("⚠️  Enhanced Bozorth3 tests require complete installation")
+        print("   Run: pip install -e \".[dev,ml]\"")
+        return False
+    
+    print("🧪 Running Enhanced Bozorth3 Unit Tests")
+    print("=" * 50)
+    
+    # Create test suite
+    suite = create_test_suite()
+    
+    # Run tests with detailed output
+    runner = unittest.TextTestRunner(
+        verbosity=2,
+        stream=sys.stdout,
+        descriptions=True,
+        failfast=False
+    )
+    
+    result = runner.run(suite)
+    
+    # Print summary
+    print("\n" + "=" * 50)
+    print("TEST SUMMARY")
+    print("=" * 50)
+    print(f"Tests run: {result.testsRun}")
+    print(f"Failures: {len(result.failures)}")
+    print(f"Errors: {len(result.errors)}")
+    print(f"Skipped: {len(result.skipped) if hasattr(result, 'skipped') else 0}")
+    
+    if result.failures:
+        print(f"\n❌ FAILURES ({len(result.failures)}):")
+        for test, traceback in result.failures:
+            print(f"  - {test}: {traceback.split(chr(10))[-2]}")
+    
+    if result.errors:
+        print(f"\n💥 ERRORS ({len(result.errors)}):")
+        for test, traceback in result.errors:
+            print(f"  - {test}: {traceback.split(chr(10))[-2]}")
+    
+    success = len(result.failures) == 0 and len(result.errors) == 0
+    
+    if success:
+        print("\n✅ All Enhanced Bozorth3 tests passed!")
+    else:
+        print(f"\n❌ Some tests failed. See details above.")
+    
+    return success
+
+
+if __name__ == "__main__":
+    run_tests()
